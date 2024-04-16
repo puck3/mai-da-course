@@ -1,28 +1,32 @@
+#include <fstream>
 #include <iostream>
 #include <string>
 
-using T = int;
-
 enum colorType { red, black };
 
+template <typename Key, typename T>
 struct Node {
   colorType color;
-  T key;
-  Node* left;
-  Node* right;
-  Node* parent;
+  Key key;
+  T data;
+  Node<Key, T>* left;
+  Node<Key, T>* right;
+  Node<Key, T>* parent;
 
   Node() noexcept
       : color(black),
-        key(T()),
+        key(Key()),
+        data(T()),
         left(nullptr),
         right(nullptr),
         parent(nullptr) {}
 
-  Node(colorType colorValue, const T& keyValue, Node* leftChild,
-       Node* rightChild, Node* parentNode) noexcept
+  Node(colorType colorValue, const Key& keyValue, const T& dataValue,
+       Node<Key, T>* leftChild, Node<Key, T>* rightChild,
+       Node<Key, T>* parentNode) noexcept
       : color(colorValue),
         key(keyValue),
+        data(dataValue),
         left(leftChild),
         right(rightChild),
         parent(parentNode) {}
@@ -32,22 +36,27 @@ struct Node {
   bool isRightSon() const { return this == this->parent->right; }
 };
 
+// using T = unsigned long long;
+// using Key = std::string;
+
+template <typename Key, typename T>
 class RedBlackTree {
  private:
-  Node* nullNode;
-  Node* root;
+  Node<Key, T>* nullNode;
+  Node<Key, T>* root;
+  size_t elementsCount;
 
-  void leftRotate(Node* oldRoot) {
-    if (oldRoot->right == nullNode) {
+  void leftRotate(Node<Key, T>* oldRoot) {
+    if (isNull(oldRoot->right)) {
       throw std::runtime_error("Unable to do left rotate");
     }
-    Node* newRoot = oldRoot->right;
+    Node<Key, T>* newRoot = oldRoot->right;
     oldRoot->right = newRoot->left;
-    if (newRoot->left != nullNode) {
+    if (!isNull(newRoot->left)) {
       newRoot->left->parent = oldRoot;
     }
     newRoot->parent = oldRoot->parent;
-    if (oldRoot->parent == nullNode) {
+    if (isNull(oldRoot->parent)) {
       this->root = newRoot;
     } else if (oldRoot->isLeftSon()) {
       oldRoot->parent->left = newRoot;
@@ -58,17 +67,17 @@ class RedBlackTree {
     oldRoot->parent = newRoot;
   }
 
-  void rightRotate(Node* oldRoot) {
-    if (oldRoot->left == nullNode) {
+  void rightRotate(Node<Key, T>* oldRoot) {
+    if (isNull(oldRoot->left)) {
       throw std::runtime_error("Unable to do right rotate");
     }
-    Node* newRoot = oldRoot->left;
+    Node<Key, T>* newRoot = oldRoot->left;
     oldRoot->left = newRoot->right;
-    if (newRoot->right != nullNode) {
+    if (!isNull(newRoot->right)) {
       newRoot->right->parent = oldRoot;
     }
     newRoot->parent = oldRoot->parent;
-    if (oldRoot->parent == nullNode) {
+    if (isNull(oldRoot->parent)) {
       this->root = newRoot;
     } else if (oldRoot->isLeftSon()) {
       oldRoot->parent->left = newRoot;
@@ -79,11 +88,11 @@ class RedBlackTree {
     oldRoot->parent = newRoot;
   }
 
-  void insertFixup(Node* brokenNode) {
+  void insertFixup(Node<Key, T>* brokenNode) {
     while (brokenNode->parent->color != black) {
-      Node* uncle = brokenNode->parent->isLeftSon()
-                        ? brokenNode->parent->parent->right
-                        : brokenNode->parent->parent->left;
+      Node<Key, T>* uncle = brokenNode->parent->isLeftSon()
+                                ? brokenNode->parent->parent->right
+                                : brokenNode->parent->parent->left;
       if (uncle->color == red) {
         brokenNode->parent->color = black;
         uncle->color = black;
@@ -111,23 +120,24 @@ class RedBlackTree {
     root->color = black;
   }
 
-  void replace(Node* oldSubtree, Node* newSubtree) {
-    if (oldSubtree->parent == nullptr || oldSubtree->parent == nullNode) {
+  void replace(Node<Key, T>* oldSubtree, Node<Key, T>* newSubtree) {
+    if (isNull(oldSubtree->parent)) {
       root = newSubtree;
     } else if (oldSubtree->isLeftSon()) {
       oldSubtree->parent->left = newSubtree;
     } else {
       oldSubtree->parent->right = newSubtree;
     }
-    if (newSubtree != nullNode) {
+    if (!isNull(newSubtree)) {
       newSubtree->parent = oldSubtree->parent;
     }
   }
 
-  void eraseFixup(Node* brokenNode) {
+  void eraseFixup(Node<Key, T>* brokenNode) {
     while (brokenNode != root && brokenNode->color != black) {
-      Node* brother = brokenNode->isLeftSon() ? brokenNode->parent->right
-                                              : brokenNode->parent->left;
+      Node<Key, T>* brother = brokenNode->isLeftSon()
+                                  ? brokenNode->parent->right
+                                  : brokenNode->parent->left;
       if (brother->color == red) {
         brother->color = black;
         brokenNode->parent->color = red;
@@ -172,17 +182,17 @@ class RedBlackTree {
     brokenNode->color = black;
   }
 
-  void deleteSubtree(Node* root) noexcept {
-    if (root == nullptr || root == nullNode) {
+  void deleteSubtree(Node<Key, T>* root) noexcept {
+    if (isNull(root)) {
       return;
     }
-    if (root->left != nullNode) {
+    if (!isNull(root->left)) {
       deleteSubtree(root->left);
     }
-    if (root->right != nullNode) {
+    if (!isNull(root->right)) {
       deleteSubtree(root->right);
     }
-    if (root->parent == nullNode) {
+    if (isNull(root->parent)) {
       this->root = nullNode;
     } else if (root->isLeftSon()) {
       root->parent->left = nullNode;
@@ -193,22 +203,23 @@ class RedBlackTree {
     root = nullptr;
   }
 
-  void copy(Node*& thisNode, const Node* otherNode,
+  void copy(Node<Key, T>*& thisNode, const Node<Key, T>* otherNode,
             const RedBlackTree& otherTree) {
-    if (otherNode == nullptr || otherNode == otherTree.nullNode) {
-      if (thisNode != nullptr) {
+    if (otherTree.isNull(otherNode)) {
+      if (!isNull(thisNode)) {
         deleteSubtree(thisNode->left);
         deleteSubtree(thisNode->right);
       }
       thisNode = nullNode;
       return;
     }
-    if (thisNode == nullptr || thisNode == nullNode) {
-      thisNode = new Node();
+    if (isNull(thisNode)) {
+      thisNode = new Node<Key, T>();
     }
     thisNode->parent = nullNode;
     thisNode->color = otherNode->color;
     thisNode->key = otherNode->key;
+    thisNode->data = otherNode->data;
     copy(thisNode->left, otherNode->left, otherTree);
     if (otherNode->left != otherTree.nullNode) {
       thisNode->left->parent = thisNode;
@@ -221,21 +232,26 @@ class RedBlackTree {
 
  public:
   RedBlackTree() {
-    nullNode = new Node();
+    nullNode = new Node<Key, T>();
     root = nullNode;
     root->parent = nullNode;
+    elementsCount = 0;
   }
 
   RedBlackTree(const RedBlackTree& other) : RedBlackTree() {
     copy(root, other.root, other);
+    elementsCount = other.elementsCount;
   }
 
   RedBlackTree(RedBlackTree&& other) noexcept
-      : nullNode(other.nullNode), root(other.root) {
+      : nullNode(other.nullNode),
+        root(other.root),
+        elementsCount(other.elementsCount) {
     other.nullNode = other.root = nullptr;
+    other.elementsCount = 0;
   }
 
-  ~RedBlackTree() noexcept {
+  virtual ~RedBlackTree() noexcept {
     deleteSubtree(root);
     delete nullNode;
     nullNode = root = nullptr;
@@ -243,6 +259,7 @@ class RedBlackTree {
 
   RedBlackTree& operator=(const RedBlackTree& other) {
     copy(root, other.root, other);
+    elementsCount = other.elementsCount;
     return *this;
   }
 
@@ -251,35 +268,36 @@ class RedBlackTree {
     delete nullNode;
     nullNode = other.nullNode;
     root = other.root;
+    elementsCount = other.elementsCount;
     other.nullNode = other.root = nullptr;
+    other.elementsCount = 0;
     return *this;
   }
 
-  Node* find(const T& key) const noexcept {
-    Node* foundNode = root;
-    while (foundNode != nullNode && foundNode->key != key) {
+  Node<Key, T>* find(const Key& key) const noexcept {
+    Node<Key, T>* foundNode = root;
+    while (!isNull(foundNode) && foundNode->key != key) {
       foundNode = key < foundNode->key ? foundNode->left : foundNode->right;
     }
     return foundNode;
   }
 
-  void insert(const T& key) {
-    if (find(key) != nullNode) {
-    }
-    Node* parent = nullNode;
-    Node* child = root;
-    while (child != nullNode) {
+  void insert(const Key& key, const T& data) {
+    Node<Key, T>* parent = nullNode;
+    Node<Key, T>* child = root;
+    while (!isNull(child)) {
       parent = child;
       if (key < child->key) {
         child = child->left;
       } else if (key > child->key) {
         child = child->right;
       } else {
-        throw std::runtime_error("Node already exist");
+        throw std::runtime_error("Exist");
       }
     }
-    Node* newChild = new Node(red, key, nullNode, nullNode, parent);
-    if (parent == nullNode) {
+    Node<Key, T>* newChild =
+        new Node<Key, T>(red, key, data, nullNode, nullNode, parent);
+    if (isNull(parent)) {
       root = newChild;
     } else if (key < parent->key) {
       parent->left = newChild;
@@ -287,45 +305,46 @@ class RedBlackTree {
       parent->right = newChild;
     }
     insertFixup(newChild);
+    ++elementsCount;
   }
 
-  Node* min(Node* root = nullptr) noexcept {
+  Node<Key, T>* min(Node<Key, T>* root = nullptr) noexcept {
     if (root == nullptr) {
       root = this->root;
     }
     if (root == nullNode) {
       return root;
     }
-    while (root->left != nullNode) {
+    while (!isNull(root->left)) {
       root = root->left;
     }
     return root;
   }
 
-  Node* max(Node* root = nullptr) noexcept {
+  Node<Key, T>* max(Node<Key, T>* root = nullptr) noexcept {
     if (root == nullptr) {
       root = this->root;
     }
     if (root == nullNode) {
       return root;
     }
-    while (root->right != nullNode) {
+    while (!isNull(root->right)) {
       root = root->right;
     }
     return root;
   }
 
-  void erase(Node* target) {
+  void erase(Node<Key, T>* target) {
     colorType erasedColor = target->color;
-    Node* movedNode;
-    if (target->left == nullNode) {
+    Node<Key, T>* movedNode;
+    if (isNull(target->left)) {
       movedNode = target->right;
       replace(target, target->right);
-    } else if (target->right == nullNode) {
+    } else if (isNull(target->right)) {
       movedNode = target->left;
       replace(target, target->left);
     } else {
-      Node* rightSubtreeMinimum = min(target->right);
+      Node<Key, T>* rightSubtreeMinimum = min(target->right);
       erasedColor = rightSubtreeMinimum->color;
       movedNode = rightSubtreeMinimum->right;
       if (rightSubtreeMinimum->parent != target) {
@@ -342,25 +361,112 @@ class RedBlackTree {
     if (erasedColor == black) {
       eraseFixup(movedNode);
     }
+    --elementsCount;
   }
 
-  void clear() noexcept { deleteSubtree(root); }
+  void clear() noexcept {
+    deleteSubtree(root);
+    elementsCount = 0;
+  }
+
+  bool isNull(const Node<Key, T>* checkedNode) const noexcept {
+    return checkedNode == nullptr || checkedNode == nullNode;
+  }
+
+  void saveNodes(std::ofstream& outputFile, const Node<Key, T>* node) const {
+    if (isNull(node)) {
+      return;
+    }
+    outputFile.write(reinterpret_cast<const char*>(&node->key), sizeof(Key));
+    outputFile.write(reinterpret_cast<const char*>(&node->data), sizeof(T));
+    saveNodes(outputFile, node->left);
+    saveNodes(outputFile, node->right);
+  }
+
+  void save(std::ofstream& outputFile) {
+    outputFile.write(reinterpret_cast<const char*>(&elementsCount),
+                     sizeof(size_t));
+
+    saveNodes(outputFile, root);
+  }
+
+  void load(std::ifstream& inputFile) {
+    clear();
+    size_t count{0};
+    inputFile.read(reinterpret_cast<char*>(&count), sizeof(size_t));
+    Key key;
+    T data;
+    for (size_t i{0}; i < count;) {
+      inputFile.read(reinterpret_cast<char*>(&key), sizeof(Key));
+      inputFile.read(reinterpret_cast<char*>(&data), sizeof(T));
+      insert(key, data);
+    }
+  }
+};
+
+std::string toLowerCase(const std::string& word) {
+  std::string lowerCaseWord = "";
+  for (char letter : word) {
+    lowerCaseWord += std::tolower(letter);
+  }
+  return lowerCaseWord;
+}
+
+class Dictionary {
+ private:
+  RedBlackTree<std::string, unsigned long long> tree;
+
+ public:
+  Dictionary() = default;
+
+  void insert(const std::string& key, const unsigned long long& value) {
+    try {
+      tree.insert(toLowerCase(key), value);
+      std::cout << "OK" << std::endl;
+    } catch (std::runtime_error& error) {
+      std::cout << error.what() << std::endl;
+    }
+  }
+
+  void at(const std::string& key) {
+    Node<std::string, unsigned long long>* foundNode =
+        tree.find(toLowerCase(key));
+    if (!tree.isNull(foundNode)) {
+      std::cout << "OK: " << foundNode->data << std::endl;
+    } else {
+      std::cout << "NoSuchWord" << std::endl;
+    }
+  }
+
+  void erase(const std::string& key) {
+    Node<std::string, unsigned long long>* foundNode =
+        tree.find(toLowerCase(key));
+    if (!tree.isNull(foundNode)) {
+      tree.erase(foundNode);
+      std::cout << "OK" << std::endl;
+    } else {
+      std::cout << "NoSuchWord" << std::endl;
+    }
+  }
+
+  void save(std::string& path) {
+    std::ofstream outputFile;
+    outputFile.open(path, std::ios::binary);
+    tree.save(outputFile);
+  }
+
+  void load(std::string& path) {
+    std::ifstream inputFile;
+    inputFile.open(path, std::ios::binary);
+    tree.load(inputFile);
+  }
 };
 
 int main() {
-  RedBlackTree tree{};
-  tree.insert(3);
-  tree.insert(14);
-  tree.insert(15);
-  tree.insert(9);
-  tree.insert(2);
-  tree.insert(6);
-  tree.insert(5);
-
-  RedBlackTree other{tree};
-  RedBlackTree third{};
-  third = other;
-
-  tree.erase(tree.find(3));
-  tree.erase(tree.find(9));
+  Dictionary test;
+  std::string input;
+  while (std::cin >> input) {
+    if (input == "") {
+    }
+  }
 }
