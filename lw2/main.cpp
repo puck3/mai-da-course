@@ -12,7 +12,7 @@ struct Node {
   Node* right;
   Node* parent;
 
-  Node()
+  Node() noexcept
       : color(black),
         key(T()),
         left(nullptr),
@@ -20,7 +20,7 @@ struct Node {
         parent(nullptr) {}
 
   Node(colorType colorValue, const T& keyValue, Node* leftChild,
-       Node* rightChild, Node* parentNode)
+       Node* rightChild, Node* parentNode) noexcept
       : color(colorValue),
         key(keyValue),
         left(leftChild),
@@ -29,33 +29,13 @@ struct Node {
 
   bool isLeftSon() const { return this == this->parent->left; }
 
-  bool isRightSon() const { return !isLeftSon(); }
+  bool isRightSon() const { return this == this->parent->right; }
 };
 
 class RedBlackTree {
  private:
   Node* nullNode;
   Node* root;
-
-  void deleteSubtree(Node* root) {
-    if (root == nullptr || root == nullNode) {
-      return;
-    }
-    if (root->left != nullNode) {
-      deleteSubtree(root->left);
-    }
-    if (root->right != nullNode) {
-      deleteSubtree(root->right);
-    }
-    if (root->parent == nullNode) {
-      this->root = nullNode;
-    } else if (root->isLeftSon()) {
-      root->parent->left = nullNode;
-    } else {
-      root->parent->right = nullNode;
-    }
-    delete root;
-  }
 
   void leftRotate(Node* oldRoot) {
     if (oldRoot->right == nullNode) {
@@ -132,7 +112,7 @@ class RedBlackTree {
   }
 
   void replace(Node* oldSubtree, Node* newSubtree) {
-    if (oldSubtree->parent == nullNode) {
+    if (oldSubtree->parent == nullptr || oldSubtree->parent == nullNode) {
       root = newSubtree;
     } else if (oldSubtree->isLeftSon()) {
       oldSubtree->parent->left = newSubtree;
@@ -192,6 +172,53 @@ class RedBlackTree {
     brokenNode->color = black;
   }
 
+  void deleteSubtree(Node* root) noexcept {
+    if (root == nullptr || root == nullNode) {
+      return;
+    }
+    if (root->left != nullNode) {
+      deleteSubtree(root->left);
+    }
+    if (root->right != nullNode) {
+      deleteSubtree(root->right);
+    }
+    if (root->parent == nullNode) {
+      this->root = nullNode;
+    } else if (root->isLeftSon()) {
+      root->parent->left = nullNode;
+    } else {
+      root->parent->right = nullNode;
+    }
+    delete root;
+    root = nullptr;
+  }
+
+  void copy(Node*& thisNode, const Node* otherNode,
+            const RedBlackTree& otherTree) {
+    if (otherNode == nullptr || otherNode == otherTree.nullNode) {
+      if (thisNode != nullptr) {
+        deleteSubtree(thisNode->left);
+        deleteSubtree(thisNode->right);
+      }
+      thisNode = nullNode;
+      return;
+    }
+    if (thisNode == nullptr || thisNode == nullNode) {
+      thisNode = new Node();
+    }
+    thisNode->parent = nullNode;
+    thisNode->color = otherNode->color;
+    thisNode->key = otherNode->key;
+    copy(thisNode->left, otherNode->left, otherTree);
+    if (otherNode->left != otherTree.nullNode) {
+      thisNode->left->parent = thisNode;
+    }
+    copy(thisNode->right, otherNode->right, otherTree);
+    if (otherNode->right != otherTree.nullNode) {
+      thisNode->right->parent = thisNode;
+    }
+  }
+
  public:
   RedBlackTree() {
     nullNode = new Node();
@@ -199,10 +226,33 @@ class RedBlackTree {
     root->parent = nullNode;
   }
 
-  ~RedBlackTree() {
-    clear();
+  RedBlackTree(const RedBlackTree& other) : RedBlackTree() {
+    copy(root, other.root, other);
+  }
+
+  RedBlackTree(RedBlackTree&& other) noexcept
+      : nullNode(other.nullNode), root(other.root) {
+    other.nullNode = other.root = nullptr;
+  }
+
+  ~RedBlackTree() noexcept {
+    deleteSubtree(root);
     delete nullNode;
     nullNode = root = nullptr;
+  }
+
+  RedBlackTree& operator=(const RedBlackTree& other) {
+    copy(root, other.root, other);
+    return *this;
+  }
+
+  RedBlackTree& operator=(RedBlackTree&& other) noexcept {
+    deleteSubtree(root);
+    delete nullNode;
+    nullNode = other.nullNode;
+    root = other.root;
+    other.nullNode = other.root = nullptr;
+    return *this;
   }
 
   Node* find(const T& key) const noexcept {
@@ -239,7 +289,7 @@ class RedBlackTree {
     insertFixup(newChild);
   }
 
-  Node* min(Node* root = nullptr) {
+  Node* min(Node* root = nullptr) noexcept {
     if (root == nullptr) {
       root = this->root;
     }
@@ -252,7 +302,7 @@ class RedBlackTree {
     return root;
   }
 
-  Node* max(Node* root = nullptr) {
+  Node* max(Node* root = nullptr) noexcept {
     if (root == nullptr) {
       root = this->root;
     }
@@ -294,7 +344,7 @@ class RedBlackTree {
     }
   }
 
-  void clear() { deleteSubtree(root); }
+  void clear() noexcept { deleteSubtree(root); }
 };
 
 int main() {
@@ -307,7 +357,10 @@ int main() {
   tree.insert(6);
   tree.insert(5);
 
-  tree.erase(tree.find(15));
+  RedBlackTree other{tree};
+  RedBlackTree third{};
+  third = other;
+
   tree.erase(tree.find(3));
   tree.erase(tree.find(9));
 }
