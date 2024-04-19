@@ -231,9 +231,9 @@ class RedBlackTree {
       return;
     }
     size_t length = node->key.size();
-    outputFile.write(reinterpret_cast<const char*>(&length), sizeof(size_t));
-    outputFile.write(reinterpret_cast<const char*>(node->key.c_str()),
-                     length * sizeof(char));
+    outputFile.write(reinterpret_cast<char*>(&length), sizeof(size_t));
+    outputFile.write(node->key.c_str(), length);
+    // const u_int64_t& data = node->data;
     outputFile.write(reinterpret_cast<const char*>(&node->data),
                      sizeof(u_int64_t));
     saveNodes(outputFile, node->left);
@@ -395,26 +395,26 @@ class RedBlackTree {
   }
 
   void save(std::ofstream& outputFile) {
-    outputFile.write(reinterpret_cast<const char*>(&elementsCount),
-                     sizeof(size_t));
+    outputFile.write(reinterpret_cast<char*>(&elementsCount), sizeof(size_t));
 
     saveNodes(outputFile, root);
   }
 
   void load(std::ifstream& inputFile) {
     clear();
-    size_t count{0};
+    size_t count;
     inputFile.read(reinterpret_cast<char*>(&count), sizeof(size_t));
-    std::string key;
+    size_t keyLength;
+    char* keyBuffer;
     u_int64_t data;
-    size_t length;
     for (size_t i{0}; i < count; ++i) {
-      inputFile.read(reinterpret_cast<char*>(&length), sizeof(size_t));
-      key.resize(length);
-      inputFile.read(reinterpret_cast<char*>(key.data()),
-                     length * sizeof(char));
+      inputFile.read(reinterpret_cast<char*>(&keyLength), sizeof(size_t));
+      keyBuffer = new char[keyLength];
+      inputFile.read(keyBuffer, keyLength);
       inputFile.read(reinterpret_cast<char*>(&data), sizeof(u_int64_t));
-      insert(key, data);
+      insert(std::string(keyBuffer, keyLength), data);
+      delete[] keyBuffer;
+      keyBuffer = nullptr;
     }
   }
 
@@ -465,46 +465,64 @@ class Dictionary {
       std::cout << "OK" << std::endl;
     } catch (std::runtime_error& error) {
       std::cout << error.what() << std::endl;
+    } catch (std::exception& error) {
+      std::cout << "ERROR: " << error.what() << std::endl;
     }
   }
 
   void at(std::string& key) {
-    Node* foundNode = tree.find(toLowerCase(key));
-    if (!tree.isNull(foundNode)) {
-      // std::cout << "found ";
-      std::cout << "OK: " << foundNode->data << std::endl;
-    } else {
-      std::cout << "NoSuchWord" << std::endl;
+    try {
+      Node* foundNode = tree.find(toLowerCase(key));
+      if (!tree.isNull(foundNode)) {
+        // std::cout << "found ";
+        std::cout << "OK: " << foundNode->data << std::endl;
+      } else {
+        std::cout << "NoSuchWord" << std::endl;
+      }
+    } catch (std::exception& error) {
+      std::cout << "ERROR: " << error.what() << std::endl;
     }
   }
 
   void erase(std::string& key) {
-    Node* foundNode = tree.find(toLowerCase(key));
-    if (!tree.isNull(foundNode)) {
-      tree.erase(foundNode);
-      // std::cout << "erased ";
-      std::cout << "OK" << std::endl;
-    } else {
-      std::cout << "NoSuchWord" << std::endl;
+    try {
+      Node* foundNode = tree.find(toLowerCase(key));
+      if (!tree.isNull(foundNode)) {
+        tree.erase(foundNode);
+        // std::cout << "erased ";
+        std::cout << "OK" << std::endl;
+      } else {
+        std::cout << "NoSuchWord" << std::endl;
+      }
+    } catch (std::exception& error) {
+      std::cout << "ERROR: " << error.what() << std::endl;
     }
   }
 
   void save(std::string& path) {
     std::ofstream outputFile;
-    outputFile.open(path, std::ios::trunc | std::ios::out | std::ios::binary);
-    tree.save(outputFile);
+    try {
+      outputFile.open(path, std::ios::trunc | std::ios::out | std::ios::binary);
+      tree.save(outputFile);
+      // std::cout << "saved ";
+      std::cout << "OK" << std::endl;
+    } catch (std::exception& error) {
+      std::cout << "ERROR: " << error.what() << std::endl;
+    }
     outputFile.close();
-    // std::cout << "saved ";
-    std::cout << "OK" << std::endl;
   }
 
   void load(std::string& path) {
     std::ifstream inputFile;
-    inputFile.open(path, std::ios::binary | std::ios::in);
-    tree.load(inputFile);
+    try {
+      inputFile.open(path, std::ios::binary | std::ios::in);
+      tree.load(inputFile);
+      // std::cout << "loaded ";
+      std::cout << "OK" << std::endl;
+    } catch (std::exception& error) {
+      std::cout << "ERROR: " << error.what() << std::endl;
+    }
     inputFile.close();
-    // std::cout << "loaded ";
-    std::cout << "OK" << std::endl;
   }
 
   void print() { tree.printTree(); }
@@ -531,7 +549,7 @@ int main() {
     } else if (input == "!") {
       std::string operation, path;
       read >> operation >> path;
-      if (operation == "Save") {
+      if (operation == "save") {
         dictionary.save(path);
       } else {
         dictionary.load(path);
