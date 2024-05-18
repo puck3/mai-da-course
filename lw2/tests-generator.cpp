@@ -14,7 +14,7 @@ int my_rand(unsigned long long max) {
 
 string rand_string() {
   string res = "";
-  size_t length = 256;
+  size_t length = my_rand(255) + 1;
   for (size_t i{0}; i < length; ++i) {
     res += (unsigned char)my_rand(93) + 33;
   }
@@ -22,7 +22,7 @@ string rand_string() {
 }
 
 void rand_array(vector<string>& v) {
-  size_t length = 50;
+  size_t length = 100000;
   for (size_t i{0}; i < length; ++i) {
     v.push_back(rand_string());
   }
@@ -47,50 +47,27 @@ std::string toUpperCase(const std::string& word) {
 int main() {
   vector<string> v;
   rand_array(v);
-  cout << "! save qwerty" << endl;
-
   for (string str : v) {
-    cout << "+ " << str << " " << 18446744073709551615u << endl;
+    cout << "+ " << str << " "
+         << (unsigned long long)my_rand(18446744073709551615u) << endl;
   }
-
-  cout << "! save qwerty2" << endl;
-  cout << "! load qwerty" << endl;
-
   size_t deleted = 0;
   vector<string> v_copy{v};
-  cout << "! save qwerty" << endl;
-  while (v.size() > 0) {
+  cout << "! Save qwerty" << endl;
+  while (v.size()) {
     size_t i = my_rand(v.size());
-    // cout << v[i] << endl;
+    cout << v[i] << endl;
     cout << "- " << v[i] << endl;
     v[i] = v.back();
     v.pop_back();
     ++deleted;
   }
-
-  cout << "! load qwerty2" << endl;
+  cout << "! Load qwerty" << endl;
 
   for (size_t i{0}; i < v_copy.size(); ++i) {
-    cout << toLowerCase(v_copy[i]) << endl;
+    cout << "+ " << toLowerCase(v_copy[i]) << endl;
   }
-
   for (size_t i{0}; i < v_copy.size(); ++i) {
-    cout << "+ " << toLowerCase(v_copy[i]) << " " << 18446744073709551615u
-         << endl;
-  }
-
-  cout << "! load qwerty" << endl;
-
-  for (size_t i{0}; i < v_copy.size(); ++i) {
-    cout << toLowerCase(v_copy[i]) << endl;
-  }
-
-  for (size_t i{0}; i < v_copy.size(); ++i) {
-    cout << "+ " << toLowerCase(v_copy[i]) << " " << 18446744073709551615u
-         << endl;
-  }
-
-  for (size_t i{0}; i < v_copy.size(); ++i) {
-    cout << toLowerCase(v_copy[i]) << endl;
+    cout << "- " << toLowerCase(v_copy[i]) << endl;
   }
 }
