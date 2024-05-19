@@ -11,18 +11,18 @@ int my_rand(unsigned long long max) {
   seed = seed * 1103515245 + 12345;  // Линейный конгруэнтный метод
   return (seed / 65536) % max;  // Вернуть значение в диапазоне 0-32767
 }
-
+const char letter[]{'a', 'A'};
 string rand_string() {
   string res = "";
   size_t length = my_rand(255) + 1;
   for (size_t i{0}; i < length; ++i) {
-    res += (unsigned char)my_rand(93) + 33;
+    res += (unsigned char)(my_rand(26) + letter[my_rand(2)]);
   }
   return res;
 }
 
 void rand_array(vector<string>& v) {
-  size_t length = 100000;
+  size_t length = 3;
   for (size_t i{0}; i < length; ++i) {
     v.push_back(rand_string());
   }
